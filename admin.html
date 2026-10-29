@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KYS Admin Controller Panel</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #090e17; color: #f1f5f9; padding: 15px; margin: 0; display: flex; justify-content: center; }
+    .panel { background: #131d2e; border: 1px solid #233554; border-radius: 12px; width: 100%; max-width: 460px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+    h2 { color: #38bdf8; text-align: center; margin: 0 0 15px 0; font-size: 1.3rem; }
+    .auth-box { text-align: center; padding: 30px 10px; }
+    label { font-size: 0.8rem; font-weight: bold; color: #94a3b8; display: block; margin-top: 10px; text-transform: uppercase; }
+    input, select { width: 100%; padding: 10px; margin-top: 5px; background: #0a101d; border: 1px solid #334e68; border-radius: 6px; color: #fff; font-size: 0.95rem; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .grid-btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 10px 0; }
+    button { padding: 10px 4px; background: #1e293b; color: #fff; border: 1px solid #3b82f6; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.95rem; }
+    button:active { background: #0284c7; }
+    .btn-ball { background: #0284c7 !important; grid-column: span 2; }
+    .btn-wicket { background: #991b1b !important; border-color: #ef4444 !important; grid-column: span 2; }
+    .btn-save { width: 100%; background: #059669; border-color: #10b981; padding: 14px; font-size: 1.1rem; margin-top: 20px; }
+    .btn-reset { width: 100%; background: #475569; border: none; margin-top: 10px; padding: 8px; font-size: 0.85rem; }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+</head>
+<body>
+
+  <!-- Password Screen -->
+  <div id="loginScreen" class="panel auth-box">
+    <h2>KALIBARI YUBA SANGHA</h2>
+    <p style="color: #94a3b8; font-size: 0.9rem;">Scorer Login Panel</p>
+    <input type="password" id="passInput" placeholder="Enter PIN (e.g. 122005)" style="text-align: center; font-size: 1.2rem; letter-spacing: 4px; margin-bottom: 15px;">
+    <button style="width: 100%; padding: 12px; background: #0284c7;" onclick="verifyPin()">Login</button>
+  </div>
+
+  <!-- Admin Controller -->
+  <div id="adminPanel" class="panel" style="display: none;">
+    <h2>KYS Score Controller</h2>
+
+    <!-- Match Info -->
+    <div class="row">
+      <div>
+        <label>Match Type</label>
+        <select id="matchType">
+          <option value="League Match">League Match</option>
+          <option value="Quarter Final">Quarter Final</option>
+          <option value="Semi Final">Semi Final</option>
+          <option value="Final">Grand Final</option>
+        </select>
+      </div>
+      <div>
+        <label>Match Number</label>
+        <input type="number" id="matchNo" value="1">
+      </div>
+    </div>
+
+    <!-- Teams & Overs -->
+    <div class="row">
+      <div>
+        <label>Batting Team</label>
+        <input type="text" id="battingTeam" value="Team Alpha">
+      </div>
+      <div>
+        <label>Bowling Team</label>
+        <input type="text" id="bowlingTeam" value="Team Bravo">
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Target (2nd Inn)</label>
+        <input type="number" id="target" placeholder="Leave blank if 1st inn">
+      </div>
+      <div>
+        <label>Total Overs</label>
+        <input type="number" id="totalOvers" value="7">
+      </div>
+    </div>
+
+    <!-- Batsmen & Bowler -->
+    <div class="row">
+      <div>
+        <label>Striker Batter</label>
+        <input type="text" id="bat1Name" placeholder="Name">
+      </div>
+      <div>
+        <label>Runs (Balls)</label>
+        <div style="display: flex; gap: 4px;">
+          <input type="number" id="bat1Runs" placeholder="R" value="0">
+          <input type="number" id="bat1Balls" placeholder="B" value="0">
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Non-Striker</label>
+        <input type="text" id="bat2Name" placeholder="Name">
+      </div>
+      <div>
+        <label>Runs (Balls)</label>
+        <div style="display: flex; gap: 4px;">
+          <input type="number" id="bat2Runs" placeholder="R" value="0">
+          <input type="number" id="bat2Balls" placeholder="B" value="0">
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Current Bowler</label>
+        <input type="text" id="bowlerName" placeholder="Bowler Name">
+      </div>
+      <div>
+        <label>Bowler (O - R - W)</label>
+        <div style="display: flex; gap: 2px;">
+          <input type="text" id="bowlerOvers" placeholder="O" value="0.0">
+          <input type="number" id="bowlerRuns" placeholder="R" value="0">
+          <input type="number" id="bowlerWkts" placeholder="W" value="0">
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Scoring Buttons -->
+    <label>Quick Score (Bat runs auto added)</label>
+    <div class="grid-btns">
+      <button onclick="ballEvent(0, '0')">Dot (0)</button>
+      <button onclick="ballEvent(1, '1')">+1</button>
+      <button onclick="ballEvent(2, '2')">+2</button>
+      <button onclick="ballEvent(3, '3')">+3</button>
+      <button onclick="ballEvent(4, '4')">+4 Four</button>
+      <button onclick="ballEvent(6, '6')">+6 Six</button>
+      <button onclick="extraEvent(1, 'Wd')">Wide (+1)</button>
+      <button onclick="extraEvent(1, 'Nb')">NoBall (+1)</button>
+    </div>
+
+    <div class="grid-btns">
+      <button class="btn-wicket" onclick="wicketEvent()">OUT / Wicket (W)</button>
+      <button class="btn-ball" onclick="nextOverReset()">New Over (Clear Balls)</button>
+    </div>
+
+    <!-- Main Live Figures -->
+    <div class="row">
+      <div>
+        <label>Total Runs</label>
+        <input type="number" id="runs" value="0">
+      </div>
+      <div>
+        <label>Total Wickets</label>
+        <input type="number" id="wickets" value="0">
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Overs (e.g. 2.4)</label>
+        <input type="text" id="overs" value="0.0">
+      </div>
+      <div>
+        <label>This Over Balls</label>
+        <input type="text" id="thisOver" placeholder="0 1 4 W">
+      </div>
+    </div>
+
+    <!-- Officials -->
+    <div class="row">
+      <div>
+        <label>Umpire 1</label>
+        <input type="text" id="umpire1" value="Umpire 1">
+      </div>
+      <div>
+        <label>Umpire 2</label>
+        <input type="text" id="umpire2" value="Umpire 2">
+      </div>
+    </div>
+
+    <label>Match Status / Result</label>
+    <input type="text" id="status" value="Match In Progress">
+
+    <button class="btn-save" onclick="updateScore()">⚡ Push Update Live</button>
+    <button class="btn-reset" onclick="resetNewMatch()">🔄 Reset / New Match</button>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCP330qxLvWwAS_ycpRJS7QS4pBD2fgxo4",
+      authDomain: "kalibari-cricket-turnament2026.firebaseapp.com",
+      databaseURL: "https://kalibari-cricket-turnament2026-default-rtdb.firebaseio.com",
+      projectId: "kalibari-cricket-turnament2026",
+      storageBucket: "kalibari-cricket-turnament2026.firebasestorage.app",
+      messagingSenderId: "927915044318",
+      appId: "1:927915044318:web:febe5f2b1212da85d9414f",
+      measurementId: "G-D3GGN03YDV"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function verifyPin() {
+      const pin = document.getElementById("passInput").value;
+      if (pin === "122005") {
+        document.getElementById("loginScreen").style.display = "none";
+        document.getElementById("adminPanel").style.display = "block";
+        loadExistingData();
+      } else {
+        alert("ভুল পাসওয়ার্ড! সঠিক পাসওয়ার্ড দিন।");
+      }
+    }
+
+    function loadExistingData() {
+      db.ref("liveMatch").once("value", (snap) => {
+        const d = snap.val();
+        if (d) {
+          document.getElementById("matchType").value = d.matchType || "League Match";
+          document.getElementById("matchNo").value = d.matchNo || 1;
+          document.getElementById("battingTeam").value = d.battingTeam || "";
+          document.getElementById("bowlingTeam").value = d.bowlingTeam || "";
+          document.getElementById("target").value = d.target || "";
+          document.getElementById("totalOvers").value = d.totalOvers || 7;
+          document.getElementById("runs").value = d.runs || 0;
+          document.getElementById("wickets").value = d.wickets || 0;
+          document.getElementById("overs").value = d.overs || "0.0";
+          document.getElementById("thisOver").value = d.thisOver || "";
+          document.getElementById("bat1Name").value = d.bat1Name || "";
+          document.getElementById("bat1Runs").value = d.bat1Runs || 0;
+          document.getElementById("bat1Balls").value = d.bat1Balls || 0;
+          document.getElementById("bat2Name").value = d.bat2Name || "";
+          document.getElementById("bat2Runs").value = d.bat2Runs || 0;
+          document.getElementById("bat2Balls").value = d.bat2Balls || 0;
+          document.getElementById("bowlerName").value = d.bowlerName || "";
+          document.getElementById("bowlerOvers").value = d.bowlerOvers || "0.0";
+          document.getElementById("bowlerRuns").value = d.bowlerRuns || 0;
+          document.getElementById("bowlerWkts").value = d.bowlerWkts || 0;
+          document.getElementById("umpire1").value = d.umpire1 || "";
+          document.getElementById("umpire2").value = d.umpire2 || "";
+          document.getElementById("status").value = d.status || "";
+        }
+      });
+    }
+
+    // Helper for legal balls
+    function addBallToOver() {
+      let parts = (document.getElementById("overs").value || "0.0").split(".");
+      let ov = parseInt(parts[0]) || 0;
+      let bl = parseInt(parts[1]) || 0;
+      bl++;
+      if (bl >= 6) { ov++; bl = 0; }
+      document.getElementById("overs").value = ov + "." + bl;
+    }
+
+    function ballEvent(run, code) {
+      document.getElementById("runs").value = Number(document.getElementById("runs").value) + run;
+      document.getElementById("bat1Runs").value = Number(document.getElementById("bat1Runs").value) + run;
+      document.getElementById("bat1Balls").value = Number(document.getElementById("bat1Balls").value) + 1;
+      document.getElementById("bowlerRuns").value = Number(document.getElementById("bowlerRuns").value) + run;
+      
+      let currOver = document.getElementById("thisOver").value.trim();
+      document.getElementById("thisOver").value = currOver ? currOver + " " + code : code;
+      addBallToOver();
+    }
+
+    function extraEvent(run, code) {
+      document.getElementById("runs").value = Number(document.getElementById("runs").value) + run;
+      document.getElementById("bowlerRuns").value = Number(document.getElementById("bowlerRuns").value) + run;
+      let currOver = document.getElementById("thisOver").value.trim();
+      document.getElementById("thisOver").value = currOver ? currOver + " " + code : code;
+    }
+
+    function wicketEvent() {
+      document.getElementById("wickets").value = Number(document.getElementById("wickets").value) + 1;
+      document.getElementById("bat1Balls").value = Number(document.getElementById("bat1Balls").value) + 1;
+      document.getElementById("bowlerWkts").value = Number(document.getElementById("bowlerWkts").value) + 1;
+      let currOver = document.getElementById("thisOver").value.trim();
+      document.getElementById("thisOver").value = currOver ? currOver + " W" : "W";
+      addBallToOver();
+    }
+
+    function nextOverReset() {
+      document.getElementById("thisOver").value = "";
+    }
+
+    function resetNewMatch() {
+      if (confirm("Apni ki shob score reset kore notun match shuru korte chan?")) {
+        document.getElementById("runs").value = 0;
+        document.getElementById("wickets").value = 0;
+        document.getElementById("overs").value = "0.0";
+        document.getElementById("target").value = "";
+        document.getElementById("thisOver").value = "";
+        document.getElementById("bat1Runs").value = 0;
+        document.getElementById("bat1Balls").value = 0;
+        document.getElementById("bat2Runs").value = 0;
+        document.getElementById("bat2Balls").value = 0;
+        document.getElementById("bowlerRuns").value = 0;
+        document.getElementById("bowlerWkts").value = 0;
+        document.getElementById("bowlerOvers").value = "0.0";
+        document.getElementById("status").value = "Match Started";
+        updateScore();
+      }
+    }
+
+    function updateScore() {
+      const payload = {
+        matchType: document.getElementById("matchType").value,
+        matchNo: Number(document.getElementById("matchNo").value),
+        battingTeam: document.getElementById("battingTeam").value,
+        bowlingTeam: document.getElementById("bowlingTeam").value,
+        target: document.getElementById("target").value ? Number(document.getElementById("target").value) : null,
+        totalOvers: Number(document.getElementById("totalOvers").value || 7),
+        runs: Number(document.getElementById("runs").value),
+        wickets: Number(document.getElementById("wickets").value),
+        overs: document.getElementById("overs").value,
+        thisOver: document.getElementById("thisOver").value,
+        bat1Name: document.getElementById("bat1Name").value,
+        bat1Runs: Number(document.getElementById("bat1Runs").value),
+        bat1Balls: Number(document.getElementById("bat1Balls").value),
+        bat2Name: document.getElementById("bat2Name").value,
+        bat2Runs: Number(document.getElementById("bat2Runs").value),
+        bat2Balls: Number(document.getElementById("bat2Balls").value),
+        bowlerName: document.getElementById("bowlerName").value,
+        bowlerOvers: document.getElementById("bowlerOvers").value,
+        bowlerRuns: Number(document.getElementById("bowlerRuns").value),
+        bowlerWkts: Number(document.getElementById("bowlerWkts").value),
+        umpire1: document.getElementById("umpire1").value,
+        umpire2: document.getElementById("umpire2").value,
+        status: document.getElementById("status").value
+      };
+
+      db.ref("liveMatch").set(payload)
+        .then(() => alert("Live Scoreboard Updated!"))
+        .catch((err) => alert("Error: " + err.message));
+    }
+  </script>
+</body>
+</html>
