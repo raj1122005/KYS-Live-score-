@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Score Controller</title>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; padding: 15px; margin: 0; display: flex; justify-content: center; }
+    .panel { background: #1e293b; color: #f8fafc; padding: 20px; border-radius: 12px; width: 100%; max-width: 440px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); border: 1px solid #334155; }
+    h2 { text-align: center; margin: 0 0 15px 0; color: #38bdf8; font-size: 1.4rem; }
+    label { font-size: 0.85rem; font-weight: 600; color: #94a3b8; display: block; margin-top: 12px; }
+    input { width: 100%; padding: 10px; margin-top: 5px; background: #0f172a; border: 1px solid #475569; border-radius: 6px; box-sizing: border-box; font-size: 1rem; color: #fff; }
+    .quick-btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 8px 0; }
+    .quick-btns button { padding: 10px 0; background: #334155; color: #fff; border: 1px solid #475569; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.95rem; }
+    .quick-btns button:active { background: #0284c7; }
+    .btn-action { grid-column: span 2; }
+    .btn-wicket { background: #991b1b !important; color: #fff !important; }
+    .btn-ball { background: #0369a1 !important; color: #fff !important; }
+    .btn-update { width: 100%; margin-top: 20px; padding: 14px; background: #0284c7; color: white; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; }
+    .btn-update:hover { background: #0369a1; }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+</head>
+<body>
+
+  <div class="panel">
+    <h2>Score Controller Panel</h2>
+
+    <label>Batting Team</label>
+    <input type="text" id="teamA" value="Team A">
+
+    <label>Bowling Team</label>
+    <input type="text" id="teamB" value="Team B">
+
+    <label>Runs</label>
+    <input type="number" id="runs" value="0">
+    <div class="quick-btns">
+      <button type="button" onclick="addRun(1)">+1</button>
+      <button type="button" onclick="addRun(2)">+2</button>
+      <button type="button" onclick="addRun(4)">+4</button>
+      <button type="button" onclick="addRun(6)">+6</button>
+      <button type="button" onclick="addRun(1)">Wide (+1)</button>
+      <button type="button" onclick="addRun(1)">No Ball (+1)</button>
+      <button type="button" onclick="addRun(3)">+3</button>
+      <button type="button" onclick="addRun(0)">Dot (0)</button>
+    </div>
+
+    <label>Wickets & Overs Control</label>
+    <div class="quick-btns">
+      <button type="button" class="btn-action btn-ball" onclick="addBall()">+1 Ball</button>
+      <button type="button" class="btn-action btn-wicket" onclick="addWicket()">+1 Wicket</button>
+    </div>
+
+    <label>Overs (Over.Ball)</label>
+    <input type="text" id="overs" value="0.0">
+
+    <label>Wickets</label>
+    <input type="number" id="wickets" value="0">
+
+    <label>Match Status / Note</label>
+    <input type="text" id="status" value="Match In Progress">
+
+    <button class="btn-update" onclick="updateScore()">Update Live Score</button>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCP330qxLvWwAS_ycpRJS7QS4pBD2fgxo4",
+      authDomain: "kalibari-cricket-turnament2026.firebaseapp.com",
+      databaseURL: "https://kalibari-cricket-turnament2026-default-rtdb.firebaseio.com",
+      projectId: "kalibari-cricket-turnament2026",
+      storageBucket: "kalibari-cricket-turnament2026.firebasestorage.app",
+      messagingSenderId: "927915044318",
+      appId: "1:927915044318:web:febe5f2b1212da85d9414f",
+      measurementId: "G-D3GGN03YDV"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    db.ref("liveMatch").once("value", (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        document.getElementById("teamA").value = data.teamA || "";
+        document.getElementById("teamB").value = data.teamB || "";
+        document.getElementById("runs").value = data.runs || 0;
+        document.getElementById("wickets").value = data.wickets || 0;
+        document.getElementById("overs").value = data.overs || "0.0";
+        document.getElementById("status").value = data.status || "";
+      }
+    });
+
+    function addRun(r) {
+      const runInput = document.getElementById("runs");
+      runInput.value = parseInt(runInput.value || 0) + r;
+    }
+
+    function addWicket() {
+      const wInput = document.getElementById("wickets");
+      wInput.value = parseInt(wInput.value || 0) + 1;
+    }
+
+    function addBall() {
+      const overInput = document.getElementById("overs");
+      let parts = (overInput.value || "0.0").split(".");
+      let ov = parseInt(parts[0]) || 0;
+      let bl = parseInt(parts[1]) || 0;
+
+      bl++;
+      if (bl >= 6) {
+        ov++;
+        bl = 0;
+      }
+      overInput.value = ov + "." + bl;
+    }
+
+    function updateScore() {
+      const matchData = {
+        teamA: document.getElementById("teamA").value,
+        teamB: document.getElementById("teamB").value,
+        runs: Number(document.getElementById("runs").value),
+        wickets: Number(document.getElementById("wickets").value),
+        overs: document.getElementById("overs").value,
+        status: document.getElementById("status").value
+      };
+
+      db.ref("liveMatch").set(matchData)
+        .then(() => alert("Live Score Updated!"))
+        .catch((err) => alert("Error: " + err.message));
+    }
+  </script>
+</body>
+</html>
